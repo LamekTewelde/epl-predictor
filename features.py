@@ -53,10 +53,15 @@ def get_goal_stats(conn, team, date):
     return score / 5, conceed / 5
 
 
+def team_exists(conn,team):
+    row = conn.execute("SELECT home_team, away_team FROM matches WHERE (home_team = ?) OR (away_team = ?) LIMIT 1", (team,team)).fetchone()
+
+    return row is not None
+
 
 def build_dataset(conn):
     all_matches = conn.execute("SELECT match_date, home_team, away_team, result FROM matches ORDER BY match_date").fetchall()
-
+    
     data = []
     for match_date, home_team, away_team, result in all_matches:
         home_team_form = get_form(conn,home_team,match_date)

@@ -1,8 +1,9 @@
 from fastapi import FastAPI
+from fastapi import HTTPException
 from database import get_connection
 from datetime import date
 from pydantic import BaseModel
-from features import get_form, get_goal_stats
+from features import get_form, get_goal_stats,team_exists
 import joblib
 import pandas as pd
 
@@ -29,13 +30,30 @@ class MatchRequest(BaseModel):
 
 @app.post("/predict")
 def predict(match: MatchRequest):
-
+    
+    if match.home_team == match.away_team:
+        raise HTTPException(status_code=400, detail="Home and Away team must be different")
+    
     today = date.today().isoformat()
     conn = get_connection()
 
+    if (team_exists(conn,match.home_team) == False):
+        conn.close()
+        raise HTTPException(status_code= 404, detail=f"Team not found: {match.home_team}")
+    if (team_exists(conn,match.away_team) == False):
+        conn.close()
+        raise HTTPException(status_code= 404, detail=f"Team not found: {match.away_team}")
+    
     home_team_form = get_form(conn, match.home_team, today)
     away_team_form = get_form(conn,match.away_team, today)
 
+    if home_team_form is None:
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"Not enough recent matches for {match.home_team}")
+    elif away_team_form is None:
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"Not enough recent matches for {match.away_team}")
+    
     home_team_score, home_team_conceed = get_goal_stats(conn, match.home_team, today)
     away_team_score, away_team_conceed = get_goal_stats(conn, match.away_team, today)
 
