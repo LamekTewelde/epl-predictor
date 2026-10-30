@@ -15,9 +15,9 @@ def test_teams():
 
 def test_predict_valid():
     response = client.post("/predict", json={"home_team": "Arsenal", "away_team" : "Chelsea"})
+    assert response.status_code == 200
     data = response.json()
     total = data['H'] + data['D'] + data['A']
-    assert response.status_code == 200
     assert abs( 1 - total) < 0.01
 
 def test_predict_same_team():
