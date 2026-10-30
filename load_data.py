@@ -7,6 +7,7 @@ def load_season(conn, code):
 
     url = f"https://www.football-data.co.uk/mmz4281/{code}/E0.csv"
     df = pd.read_csv(url, usecols =['Date', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR'])
+    df = df.dropna()
     df["Date"] = pd.to_datetime(df["Date"], dayfirst=True)
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
     season = f"20{code[:2]}-{code[2:]}"
@@ -22,7 +23,7 @@ def load_season(conn, code):
 def main():
     conn = get_connection()
 
-    for code in ["2223", "2324", "2425","2526"]:
+    for code in ["2223", "2324", "2425","2526","2627"]:
         load_season(conn, code)
         print("Loaded", code)
 
