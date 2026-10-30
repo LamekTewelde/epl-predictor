@@ -1,0 +1,5 @@
+epl.db
+.venv/
+__pycache__/
+.git/
+.pytest_cache/
