@@ -6,8 +6,12 @@ from pydantic import BaseModel
 from features import get_form, get_goal_stats,team_exists
 import joblib
 import pandas as pd
+from fastapi.responses import RedirectResponse
 
 app = FastAPI()
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
 
 @app.get("/health")
 def health():
@@ -69,3 +73,4 @@ def predict(match: MatchRequest):
     draw = round(float(probs[1]),3)
 
     return {"H":home,"D": draw, "A": away}
+
