@@ -1,0 +1,16 @@
+name: Weekly data refresh
+
+on:
+  schedule:
+    # Every Tuesday at 06:00 UTC (after the weekend and Monday night matches)
+    - cron: "0 6 * * 2"
+  # Adds a "Run workflow" button in the Actions tab so you can test it by hand
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render rebuild
+        # -f makes curl fail on an HTTP error, so a bad hook URL shows up as a failed run
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
