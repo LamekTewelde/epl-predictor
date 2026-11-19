@@ -14,5 +14,9 @@ COPY . .
 # Build the database by downloading the data
 RUN python load_data.py
 
+# Train the model on fresh data
+RUN python model.py
+
 # Start the server
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+
