@@ -11,6 +11,7 @@ A REST API that predicts the outcome of Premier League matches. Give it two team
 2. **Features:** for each match, the API looks at each team's **last 5 matches before that date**: points earned (form), and average goals scored and conceded. Only earlier matches are used, so the model never sees the result it is predicting (no data leakage).
 3. **Model:** a scikit-learn logistic regression trained on those six features, returning probabilities for home win, draw and away win.
 4. **API:** FastAPI serves the predictions, computing each team's current form from the database at request time.
+5. **Weekly refresh:** a GitHub Actions job runs every Tuesday and triggers a rebuild on Render, which downloads the latest results and retrains the model, so predictions stay current without any manual work.
 
 ## Results
 
@@ -21,7 +22,7 @@ The model was trained on 2022-23 to 2024-25 and tested on the full 2025-26 seaso
 | Baseline: always predict a home win | 42.4% |
 | **This model** | **46.4%** |
 
-The baseline matters because home teams win more often than any other result, so a model that only guesses "home win" already scores 42%. This model beats it by about 4 points, roughly 15 more correct predictions across the season.
+Reproduce it with `python3 evaluate.py`. The baseline matters because home teams win more often than any other result, so a model that only guesses "home win" already scores 42%. This model beats it by about 4 points, roughly 15 more correct predictions across the season.
 
 ## Example
 
@@ -47,8 +48,9 @@ Content-Type: application/json
 | GET | `/health` | Checks the server is running |
 | GET | `/teams` | Lists every team in the database |
 | POST | `/predict` | Returns home win / draw / away win probabilities for two teams |
+| GET | `/fixtures/upcoming` | Predictions for every match in the next Premier League round |
 
-Bad requests return clear errors: **404** for an unknown team, **400** if both teams are the same or a team doesn't have enough recent matches.
+Bad requests return clear errors: **404** for an unknown team, **400** if both teams are the same or a team doesn't have enough recent matches, and **503** if the fixtures source is unavailable.
 
 Interactive documentation is available at [`/docs`](https://epl-predictor-vbj3.onrender.com/docs).
 
@@ -64,9 +66,12 @@ Python · FastAPI · SQLite · pandas · scikit-learn · pytest · Docker · Ren
 | `database.py` | Opens the database connection and creates the table |
 | `load_data.py` | Downloads each season and loads it into SQLite |
 | `features.py` | Calculates form and goal stats, and builds the training dataset |
-| `model.py` | Trains and evaluates the model, then saves it to `model.joblib` |
+| `model.py` | Trains the model on all matches and saves it to `model.joblib` |
+| `evaluate.py` | Tests the model on a season it has never seen and compares it to the baseline |
+| `fixtures.py` | Fetches the next round of fixtures and matches team names to the database |
 | `main.py` | The FastAPI app |
 | `test_api.py` | Automated API tests |
+| `.github/workflows/refresh-data.yml` | Weekly job that triggers a rebuild with fresh data |
 
 ## Run locally
 
@@ -78,7 +83,8 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 python3 load_data.py             # download match data into SQLite
-python3 model.py                 # train, evaluate and save the model
+python3 evaluate.py              # measure accuracy against the baseline
+python3 model.py                 # train on all data and save the model
 uvicorn main:app --reload        # start the API
 ```
 
@@ -97,9 +103,11 @@ docker run -p 8000:8000 epl-predictor
 pytest
 ```
 
+7 tests cover every endpoint, including error cases. The fixtures tests replace the external fixtures site with a fake response, so they run offline and can't fail because another website is down.
+
 ## What I'd improve next
 
 - **Better features:** home and away form tracked separately, head-to-head record, and longer-term team strength ratings.
 - **Draw prediction:** the model rarely predicts draws, a common weakness in football models. Adjusting class weights could help.
-- **Automatic data refresh:** a scheduled job to load new results each week, so predictions stay current without a redeploy.
+- **Accuracy tracking:** save every prediction, compare it with the real result once the match is played, and report live accuracy for the current season.
 - **Front end:** a React app where users pick two teams and see the probabilities visually.
